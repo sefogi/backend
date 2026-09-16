@@ -43,12 +43,15 @@ backend/
 ### Archivos principales
 
 #### `db.js`
+
 Este archivo se encarga de crear la conexión con PostgreSQL.
 
 #### `server.js`
+
 Aquí se define el servidor HTTP, las rutas y la lógica del CRUD.
 
 #### `database/schemas.sql`
+
 Aquí está la estructura de la tabla `events` y algunos datos de ejemplo.
 
 ---
@@ -59,7 +62,7 @@ Antes de correr el backend debes tener instalado:
 
 - Node.js
 - pnpm
-- PostgreSQL
+- PostgreSQL cuando lo instales usa la aplicacion pgadmin en el ordenador
 
 ### 3.1 Crear la base de datos
 

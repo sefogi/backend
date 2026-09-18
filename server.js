@@ -34,6 +34,14 @@ function sendJSON(res, statusCode, data) {
 }
 
 const server = http.createServer(async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === "OPTIONS") {
+        res.writeHead(200);
+        return res.end();
+    }
 
     const url = new URL(req.url, `http://${req.headers.host}`);
     const pathParts = url.pathname.split("/").filter(Boolean); // ej: ["events", "3"]
@@ -82,7 +90,7 @@ const server = http.createServer(async (req, res) => {
                     `INSERT INTO events (name, description, date, location, price, image)
                      VALUES ($1, $2, $3, $4, $5, $6)
                      RETURNING *`,
-                    [name, description || null, date, location, price || 0, image || null]
+                    [name, description || null, date, location, String(price ?? "0.00"), image || null]
                 );
 
                 return sendJSON(res, 201, result.rows[0]);
@@ -119,7 +127,7 @@ const server = http.createServer(async (req, res) => {
                         description ?? current.description,
                         date ?? current.date,
                         location ?? current.location,
-                        price ?? current.price,
+                        String(price ?? current.price ?? "0.00"),
                         image ?? current.image,
                         id
                     ]

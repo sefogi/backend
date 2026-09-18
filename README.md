@@ -76,7 +76,7 @@ CREATE DATABASE eco_ticket;
 
 Abre el archivo `database/schemas.sql` y ejecútalo en tu PostgreSQL para crear la tabla `events` y algunos datos iniciales.
 
-Ejemplo:
+Ejemplo actualizado con `price` como texto:
 
 ```sql
 CREATE TABLE events (
@@ -85,7 +85,7 @@ CREATE TABLE events (
     description TEXT,
     date DATE NOT NULL,
     location VARCHAR(200) NOT NULL,
-    price DECIMAL(10,2) DEFAULT 0,
+    price VARCHAR(10) DEFAULT '0.00',
     image VARCHAR(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -100,9 +100,29 @@ VALUES (
   'Festival de rock comprometido con el medio ambiente.',
   '2026-10-15',
   'Tuluá',
-  15.00,
+  '15.00',
   'rock-ecologico.jpg'
 );
+```
+
+### 3.3 Cambio importante: `price` ahora es string
+
+Se cambió el tipo de la columna `price` de numérico a texto para evitar problemas con valores como `"15.00"` y para mantener una representación uniforme al enviar datos desde el frontend.
+
+Esto fue necesario porque la aplicación se comunica con Vite en `http://localhost:5173` y la API debe enviar y recibir precios como string para no romper la lógica del formulario ni las validaciones del cliente.
+
+Ejemplo de la estructura final:
+
+```sql
+price VARCHAR(10) DEFAULT '0.00'
+```
+
+Esto permite guardar valores como:
+
+```text
+'5.00'
+'15.50'
+'100.00'
 ```
 
 ---
@@ -120,7 +140,7 @@ const pool = new Pool({
     user: 'postgres',
     host: 'localhost',
     database: 'eco_ticket',
-    password: 'sefogi',
+    password: 'TU CLAVE',
     port: 5432,
 });
 
@@ -169,7 +189,23 @@ Si todo va bien, verás este mensaje:
 Servidor ejecutándose en http://localhost:3000
 ```
 
-### 5.3 Si falla por puerto ocupado
+### 5.3 CORS para frontend en Vite
+
+El servidor incluye cabeceras CORS para permitir peticiones desde el frontend que corre en `http://localhost:5173`.
+
+Estas cabeceras se configuran en `server.js`:
+
+```js
+res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+```
+
+También se maneja la petición `OPTIONS` para responder a los preflights de los navegadores cuando el frontend hace un `fetch` o `axios` desde otra origin.
+
+Esto es importante porque, sin CORS, el navegador bloquea las peticiones desde un cliente diferente al dominio del backend.
+
+### 5.4 Si falla por puerto ocupado
 
 Es común ver este error:
 
@@ -365,7 +401,7 @@ if (req.method === "POST" && !id) {
         `INSERT INTO events (name, description, date, location, price, image)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
-        [name, description || null, date, location, price || 0, image || null]
+        [name, description || null, date, location, String(price ?? "0.00"), image || null]
     );
 
     return sendJSON(res, 201, result.rows[0]);
@@ -375,6 +411,8 @@ if (req.method === "POST" && !id) {
 #### ¿Qué hace?
 
 Recibe los datos del nuevo evento y los guarda en PostgreSQL.
+
+> Importante: como la columna `price` en la base de datos es `VARCHAR`, antes de guardar el valor se convierte a string con `String(price ?? "0.00")` para evitar errores de tipo y mantener la consistencia entre frontend y backend.
 
 #### Campos obligatorios
 
@@ -447,7 +485,7 @@ if (req.method === "PUT" && id) {
             description ?? current.description,
             date ?? current.date,
             location ?? current.location,
-            price ?? current.price,
+            String(price ?? current.price ?? "0.00"),
             image ?? current.image,
             id
         ]
@@ -461,7 +499,7 @@ if (req.method === "PUT" && id) {
 
 Actualiza un evento existente sin perder datos si no se envían todos los campos.
 
-Usa `??` para conservar el valor actual si el nuevo viene vacío o `undefined`.
+Usa `??` para conservar el valor actual si el nuevo viene vacío o `undefined`, y convierte `price` a string antes de guardarlo en PostgreSQL.
 
 #### Ejemplo:
 
@@ -470,7 +508,7 @@ curl -X PUT http://localhost:3000/events/1 \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Rock Ecológico Actualizado",
-    "price": 30
+    "price": "30"
   }'
 ```
 
